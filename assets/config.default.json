@@ -1,40 +1,45 @@
 {
   "version": 1,
   "clock24": false,
-  "temp_unit": "fahrenheit",
-  "location_name": "San Francisco",
-  "latitude": 37.7749,
-  "longitude": -122.4194,
+  "temp_unit": "celsius",
+  "location_name": "Bengaluru",
+  "latitude": 12.9716,
+  "longitude": 77.5946,
   "bg_animated": true,
   "card_animations": true,
   "bg_theme": "classic",
   "bg_density": "normal",
   "bg_speed": "normal",
-  "show_telemetry": false,
+  "show_telemetry": true,
   "categories": {
     "up": [
-      { "id": "com.webos.app.hdmi1", "title": "HDMI 1", "color": "#e60012", "launch_type": "input" },
-      { "id": "com.webos.app.hdmi2", "title": "HDMI 2", "color": "#2f6cf6", "launch_type": "input" },
       { "id": "com.twin.app.gamingportal", "title": "Gaming Portal", "color": "#a855f7", "icon": "assets/icons/gamingportal.png" },
-      { "id": "com.geforcenow.play", "title": "GeForce NOW", "color": "#76b900", "icon": "assets/icons/geforcenow.png" }
+      { "id": "com.github.k4zmu2a.space-cadet-pinball", "title": "Pinball", "color": "#6366f1", "icon": "assets/icons/pinball.png" },
+      { "id": "com.leondrolio.x.openttd", "title": "OpenTTD", "color": "#2d72d9", "icon": "assets/icons/openttd.png" },
+      { "id": "com.retroarch.webos", "title": "RetroArch", "color": "#383838", "icon": "assets/icons/retroarch.png" },
+      { "id": "com.geforcenow.play", "title": "GeForce NOW", "color": "#76b900", "icon": "assets/icons/geforcenow.png" },
+      { "id": "com.limelight.webos", "title": "Moonlight", "color": "#14805e", "icon": "assets/icons/moonlight.png" },
+      { "id": "com.webos.app.hdmi4", "title": "Steam", "color": "#1b2838", "icon": "assets/icons/steam.png", "launch_type": "input" }
     ],
     "down": [
       { "id": "netflix", "title": "Netflix", "color": "#e50914", "icon": "assets/icons/netflix.png" },
       { "id": "amazon", "title": "Prime Video", "color": "#00a8e1", "icon": "assets/icons/prime.png" },
-      { "id": "com.disney.disneyplus-prod", "title": "Disney+", "color": "#1f6feb", "icon": "assets/icons/disney.png" },
+      { "id": "hotstar", "title": "JioHotstar", "color": "#1492ff", "icon": "assets/icons/hotstar.png" },
       { "id": "com.apple.appletv", "title": "Apple TV", "color": "#b8bcc4", "icon": "assets/icons/appletv.png" },
-      { "id": "com.wbd.stream", "title": "HBO Max", "color": "#7b2ff7", "icon": "assets/icons/hbomax.png" },
-      { "id": "hulu", "title": "Hulu", "color": "#1ce783", "icon": "assets/icons/hulu.png" },
-      { "id": "youtube.leanback.ytv.v1", "title": "YouTube TV", "color": "#ff4e45", "icon": "assets/icons/youtubetv.png" },
-      { "id": "com.plutotv.app", "title": "Pluto TV", "color": "#ffdd00", "icon": "assets/icons/pluto.png" },
-      { "id": "com.tubitv.ott.tubi", "title": "Tubi", "color": "#8b5cf6", "icon": "assets/icons/tubi.png" }
+      { "id": "com.sonyliv2.tvapp", "title": "SonyLIV", "color": "#181818", "icon": "assets/icons/sonyliv.png" },
+      { "id": "com.zee5.app", "title": "ZEE5", "color": "#9c27b0", "icon": "assets/icons/zee5.png" },
+      { "id": "com.mubi", "title": "MUBI", "color": "#002b49", "icon": "assets/icons/mubi.png" },
+      { "id": "com.justwatch.justwatch", "title": "JustWatch", "color": "#ffc107", "icon": "assets/icons/justwatch.png" }
     ],
     "left": [
-      { "id": "youtube.leanback.v4", "title": "YouTube", "color": "#ff0033", "icon": "assets/icons/youtube.png" },
+      { "id": "com.theadelab.amclient-lg", "title": "Amazon Music", "color": "#25d1da", "icon": "assets/icons/amazonmusic.png" },
+      { "id": "com.apple.applemusic", "title": "Apple Music", "color": "#fa233b", "icon": "assets/icons/applemusic.png" },
       { "id": "spotify-beehive", "title": "Spotify", "color": "#1db954", "icon": "assets/icons/spotify.png" },
-      { "id": "twitch.adamffdev.v1", "title": "Twitch", "color": "#9146ff", "icon": "assets/icons/twitch.jpg" },
-      { "id": "com.instantbits.cast.webvideo", "title": "Web Video Caster", "color": "#ff9500", "icon": "assets/icons/webvideo.png" },
-      { "id": "com.webos.app.mediadiscovery", "title": "Media Player", "color": "#0284c7", "icon": "assets/icons/mediaplayer.png" }
+      { "id": "cdp-30", "title": "Plex", "color": "#e5a00d", "icon": "assets/icons/plex.png" },
+      { "id": "com.webos.app.mediadiscovery", "title": "Media Player", "color": "#0284c7", "icon": "assets/icons/mediaplayer.png" },
+      { "id": "org.litefin.app", "title": "Litefin", "color": "#aa5cc3", "icon": "assets/icons/litefin.png" },
+      { "id": "com.beb.plxnative", "title": "PlxNative", "color": "#e5a00d", "icon": "assets/icons/plxnative.png" },
+      { "id": "youtube.leanback.v4", "title": "YouTube", "color": "#ff0033", "icon": "assets/icons/youtube.png" }
     ],
     "right": [
       { "id": "internal.screenoff", "title": "OLED Screen Off", "color": "#38bdf8", "icon": "assets/icons/screenoff.png", "launch_type": "screenoff" },
@@ -43,7 +48,12 @@
       { "id": "com.palm.app.settings", "title": "TV Settings", "color": "#64748b", "icon": "assets/icons/settings.png" },
       { "id": "com.webos.app.browser", "title": "Web Browser", "color": "#3b82f6", "icon": "assets/icons/browser.png" },
       { "id": "com.webos.app.livetv", "title": "Live TV", "color": "#f43f5e", "icon": "assets/icons/livetv.png" },
-      { "id": "com.webos.app.homeconnect", "title": "Home Hub", "color": "#14b8a6", "icon": "assets/icons/homehub.png" }
+      { "id": "com.webos.app.homeconnect", "title": "Home Hub", "color": "#14b8a6", "icon": "assets/icons/homehub.png" },
+      { "id": "com.webos.app.camera", "title": "Camera", "color": "#8b5cf6", "icon": "assets/icons/camera.png" },
+      { "id": "com.webos.app.discovery", "title": "Apps", "color": "#ec4899", "icon": "assets/icons/discovery.png" },
+      { "id": "com.webos.app.multiviewsettings", "title": "Multi View", "color": "#6366f1", "icon": "assets/icons/multiview.png" },
+      { "id": "com.windowsight.lgtv", "title": "WindowSight", "color": "#f59e0b", "icon": "assets/icons/windowsight.png" },
+      { "id": "de.2kit.castbrowserlg", "title": "TV Cast", "color": "#06b6d4", "icon": "assets/icons/tvcast.png" }
     ]
   },
   "hidden": []
