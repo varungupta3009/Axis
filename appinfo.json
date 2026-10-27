@@ -1,0 +1,26 @@
+{
+  "id": "org.axis.native",
+  "version": "1.0.0",
+  "vendor": "Varun Gupta",
+  "type": "native",
+  "main": "axis",
+  "title": "Axis Home (Native)",
+  "icon": "assets/icon.png",
+  "largeIcon": "assets/largeIcon.png",
+  "resolution": "1920x1080",
+  "bgColor": "#050505",
+  "iconColor": "#0a0e1a",
+  "transparent": false,
+  "handlesRelaunch": true,
+  "disableBackHistoryAPI": true,
+  "noSplashOnLaunch": true,
+  "spinnerOnLaunch": false,
+  "keepAlive": true,
+  "requiredPermissions": [
+    "all",
+    "application.launcher",
+    "application.operation",
+    "tv.power",
+    "audio.operation"
+  ]
+}

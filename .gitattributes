@@ -1,9 +1,9 @@
-# Shell scripts and the bundled webOS service run on the TV (busybox sh / Linux node).
-# They MUST use LF — a CRLF creates a stray \r that breaks busybox sh ("Illegal number").
-# Force LF regardless of the developer's core.autocrlf setting.
+# Shell and Python scripts run on the TV (busybox sh / Linux Python).
+# Force LF line endings regardless of the local Git core.autocrlf setting.
 *.sh text eol=lf
+*.py text eol=lf
 *.command text eol=lf
-service/service.js text eol=lf
-service/autostart.sh text eol=lf
-# Windows batch must stay CRLF
+scripts/*.sh text eol=lf
+scripts/*.py text eol=lf
+# Windows batch files must keep CRLF
 *.bat text eol=crlf

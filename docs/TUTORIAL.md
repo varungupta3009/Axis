@@ -1,190 +1,179 @@
-# Tutorial: From a stock LG TV to a custom Home
+# Tutorial: Install and Configure Axis on an LG webOS TV
 
-This walks you all the way from an untouched LG webOS TV to booting straight into
-your own home screen. Budget an hour the first time. Nothing here writes to
-protected OS partitions — every step is reversible, and a full uninstall returns
-the TV to stock.
+This guide explains how to compile, install, and configure Axis (`org.axis.native`) on an LG webOS TV. Every change stays inside user-writable paths (`/media/developer` and `/var/lib/webosbrew`), and you can revert to the stock LG Home screen at any time.
 
-**Contents**
+## Contents
 
-1. [Decide: root vs. Developer Mode](#1-decide-root-vs-developer-mode)
-2. [Enable access on the TV](#2-enable-access-on-the-tv)
-3. [Install the tooling on your computer](#3-install-the-tooling-on-your-computer)
-4. [Register your TV with ares](#4-register-your-tv-with-ares)
-5. [Get the project and build it](#5-get-the-project-and-build-it)
-6. [First deploy](#6-first-deploy)
-7. [Make it yours (apps, weather, icons)](#7-make-it-yours-apps-weather-icons)
-8. [Take over the Home button and boot](#8-take-over-the-home-button-and-boot)
-9. [Find your remote's HOME key code](#9-find-your-remotes-home-key-code)
-10. [Uninstall / revert](#10-uninstall--revert)
+1. [Choose Developer Mode or Root](#1-choose-developer-mode-or-root)
+2. [Prepare Access on the TV](#2-prepare-access-on-the-tv)
+3. [Install Build Tools on Your Computer](#3-install-build-tools-on-your-computer)
+4. [Build and Package Axis](#4-build-and-package-axis)
+5. [Deploy Axis to the TV](#5-deploy-axis-to-the-tv)
+6. [Customize Weather, Apps, and Icons](#6-customize-weather-apps-and-icons)
+7. [Configure Boot and Home Button Takeover (Root Only)](#7-configure-boot-and-home-button-takeover-root-only)
+8. [Uninstall and Revert to Stock](#8-uninstall-and-revert-to-stock)
 
 ---
 
-## 1. Decide: root vs. Developer Mode
+## 1. Choose Developer Mode or Root
 
-| | LG Developer Mode | Root (Homebrew Channel) |
+| Feature | LG Developer Mode | Root (Homebrew Channel) |
 |---|---|---|
-| Sideload & run the app | ✅ | ✅ |
-| Home-button watcher | ⚠️ likely, unproven | ✅ |
-| **Boot straight into the app** | ❌ | ✅ |
-| Persistence | Session lapses wipe `/media/developer` | Survives reboots |
+| Sideload and launch `org.axis.native` | Yes | Yes |
+| Automatic app discovery and icon staging | Requires `hbchannel` exec | Yes |
+| Intercept the physical Home button | No | Yes (`lginputhook` + watcher) |
+| Boot directly into Axis | No | Yes (`init.d` hook) |
 
-The blocker for the full experience is **persistence**, not permissions. If you
-just want to *open* the launcher yourself, Developer Mode is enough. If you want
-it to **be** your Home on every boot, you need root. This tutorial covers the
-root path; Developer-Mode users can follow along and simply stop before
-[step 8](#8-take-over-the-home-button-and-boot).
-
-## 2. Enable access on the TV
-
-**Root path (recommended):**
-
-1. Enable Developer Mode first: install **Developer Mode** from the LG Content
-   Store, sign in with a free LG developer account, toggle Dev Mode on.
-2. Root the TV with the [webOS Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel)
-   using the [rootmytv](https://rootmy.tv/) exploit for your firmware. Follow
-   their instructions for your exact webOS version.
-3. In the Homebrew Channel app, enable **Root system / SSH**.
-4. From your computer, confirm SSH works:
-   ```bash
-   ssh root@<TV_IP>       # default password is often "alpine" — change it
-   ```
-5. **Recommended:** install an SSH key so deploys are keyless.
-   ```bash
-   ssh-copy-id root@<TV_IP>       # or append your pubkey to /home/root/.ssh/authorized_keys
-   ```
-
-Find `<TV_IP>` under **Settings → Network** on the TV. Give the TV a DHCP
-reservation so the IP doesn't move.
-
-**Developer-Mode-only path:** enable Dev Mode as above; sideloading uses the
-dev-mode passphrase instead of SSH root. Skip the Homebrew steps.
-
-## 3. Install the tooling on your computer
-
-```bash
-# Node 18+ (https://nodejs.org)
-node -v
-
-# webOS CLI — provides ares-setup-device, ares-package, ares-install, ares-launch
-npm install -g @webos-tools/cli
-ares-setup-device --version
-```
-
-## 4. Register your TV with ares
-
-```bash
-ares-setup-device
-```
-
-Add a device (name it **`tv`** to match the defaults). For a **rooted** TV use
-`root` @ port `22` with your SSH key; for **Developer Mode** use the `prisoner`
-account @ port `9922` with the dev-mode passphrase. Verify:
-
-```bash
-ares-setup-device --list
-ares-launch --device tv --listApp     # should print the apps installed on your TV
-```
-
-That last command doubles as your source of truth for **app IDs** in step 7.
-
-## 5. Get the project and build it
-
-```bash
-git clone https://github.com/zzeppieri/webos-custom-home.git
-cd webos-custom-home
-npm install
-npm run dev        # optional: preview in a desktop browser at the printed URL
-```
-
-In the browser, LunaService calls no-op (you're not on the TV), but the layout,
-clock, weather, and navigation all work — this is where you iterate on look.
-
-## 6. First deploy
-
-```bash
-npm run deploy
-```
-
-If your ares profile isn't named `tv`, or the TV isn't at the default IP:
-
-```bash
-TV_DEVICE=myprofile TV_IP=192.168.1.50 npm run deploy
-```
-
-You should see build → package → install → launch, ending with
-`✓ deployed; app launched + Home watcher re-armed`, and the app should appear on
-the TV. If packaging errors with *"Failed to minify code,"* you're missing
-`--no-minify` — the bundled script already includes it, so use `npm run deploy`.
-
-## 7. Make it yours (apps, weather, icons)
-
-**Apps** — edit [`src/lib/apps.ts`](../src/lib/apps.ts). Each tile:
-
-```ts
-{ id: 'netflix', title: 'Netflix', color: '#e50914', icon: 'icons/netflix.png' }
-```
-
-- `id` must be a real app ID from `ares-launch --device tv --listApp`.
-- HDMI inputs use `launchType: 'input'`, e.g. `com.webos.app.hdmi2` for a PS5.
-- The app also merges your TV's real launch points at runtime, dropping any it
-  doesn't recognize into **Misc** — so unlisted apps still appear.
-
-**Weather** — set your coordinates in
-[`src/service/weather.ts`](../src/service/weather.ts). Open-Meteo needs no key.
-
-**Icons** — drop `.png` files into [`public/icons/`](../public/icons/) and
-reference them by `icons/<name>.png`. WAM sandboxes web apps, so you can't point
-at another app's icon on disk — bundle a copy. Missing icons fall back to a
-monogram.
-
-Re-run `npm run deploy` after any change.
-
-## 8. Take over the Home button and boot
-
-*(Rooted TVs only.)*
-
-`npm run deploy` already installs the in-package LunaService and starts it with
-`--boot --watch`. To make it **survive reboots**, symlink the autostart hook into
-webosbrew's init.d on the TV:
-
-```bash
-ssh root@<TV_IP>
-SVC=/media/developer/apps/usr/palm/services/tld.my.customhome.service
-ln -sf "$SVC/autostart.sh" /var/lib/webosbrew/init.d/49-custom-home
-reboot
-```
-
-After reboot the TV should come up in your custom Home, and pressing **HOME** on
-the remote should return to it from any app. How this works — the registered
-service, the non-blocking input poll, and the wake-from-standby heartbeat — is
-described in the [README](../README.md#how-the-home-takeover-works).
-
-## 9. Find your remote's HOME key code
-
-If the HOME button doesn't bring you back, your remote likely uses a different
-key code than the default `773`. Find yours:
-
-```bash
-ssh root@<TV_IP>
-cat /dev/input/event*        # press HOME a few times, watch for a repeating code
-```
-
-Set the value you observe as `HOME_CODE` in
-[`service/service.js`](../service/service.js), then `npm run deploy` again.
-
-## 10. Uninstall / revert
-
-```bash
-# remove the boot hook, then the app
-ssh root@<TV_IP> "rm -f /var/lib/webosbrew/init.d/49-custom-home"
-ares-install --device tv --remove tld.my.customhome
-```
-
-Nothing modified the read-only OS, so removing the app and the init.d symlink
-fully restores stock behavior. A factory reset is never required.
+Developer Mode lets you sideload and open Axis like a normal TV app. Root access with the [webOS Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) lets Axis replace the stock LG Home screen on boot and on every Home button press.
 
 ---
 
-**Stuck?** See [Troubleshooting](../README.md#troubleshooting) in the README, or
-open an issue.
+## 2. Prepare Access on the TV
+
+### Root Path (Recommended)
+
+1. Root your TV and install the [webOS Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) using the method supported for your webOS firmware.
+2. Open **Homebrew Channel** on the TV and enable **Root SSH** and **Startup Scripts (`init.d`)**.
+3. Assign a static DHCP reservation to the TV on your router.
+4. Copy your SSH public key to the TV:
+   ```bash
+   ssh-copy-id root@<TV_IP>
+   ```
+5. Test SSH login from your computer:
+   ```bash
+   ssh root@<TV_IP> "uname -a"
+   ```
+
+### Developer Mode Path
+
+1. Install **Developer Mode** from the LG Content Store and sign in with an LG Developer account.
+2. Enable **Dev Mode Status** and **Key Server** inside the Developer Mode app.
+3. Install `@webos-tools/cli` (`npm install -g @webos-tools/cli`) and register your TV with `ares-setup-device`.
+
+---
+
+## 3. Install Build Tools on Your Computer
+
+1. Install Rust and add the 32-bit ARMv7 target:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   rustup target add armv7-unknown-linux-gnueabi
+   ```
+2. Install Zig, `cargo-zigbuild`, and Python 3:
+   ```bash
+   brew install zig python3
+   cargo install cargo-zigbuild
+   ```
+
+---
+
+## 4. Build and Package Axis
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/varungupta3009/Axis.git
+   cd Axis
+   ```
+2. Build the `.ipk` package:
+   ```bash
+   ./scripts/package-ipk.sh
+   ```
+   This command compiles `target/armv7-unknown-linux-gnueabi/release/axis` and creates `dist/org.axis.native_1.0.0_arm.ipk`.
+
+---
+
+## 5. Deploy Axis to the TV
+
+### Deploy Over Root SSH
+
+Run the bundled installer script:
+
+```bash
+TV_HOST="root@<TV_IP>" SSH_KEY="$HOME/.ssh/id_ed25519" ./scripts/install-on-tv.sh
+```
+
+Launch Axis on the TV to test it:
+
+```bash
+ssh root@<TV_IP> "luna-send -n 1 luna://com.webos.applicationManager/launch '{\"id\":\"org.axis.native\"}'"
+```
+
+### Deploy With `ares-install` (Developer Mode)
+
+Install and launch the package with the webOS CLI:
+
+```bash
+ares-install --device tv dist/org.axis.native_1.0.0_arm.ipk
+ares-launch --device tv org.axis.native
+```
+
+---
+
+## 6. Customize Weather, Apps, and Icons
+
+On first launch, Axis writes its configuration file inside the app jail at:
+
+```text
+/var/palm/jail/org.axis.native/home/root/.config/axis/config.json
+```
+
+### Weather Location
+
+1. Open the configuration file over SSH (or edit `assets/config.default.json` before you build the `.ipk`).
+2. Update `location_name`, `latitude`, `longitude`, and `temp_unit` (`"celsius"` or `"fahrenheit"`).
+3. Restart Axis or reboot the TV to load the updated coordinates.
+
+### App Categories and Icons
+
+- Press and hold **OK** on any tile for 550 ms to reorder tiles within a category or move a tile to another direction.
+- Open **Launcher Settings** (in the **Right** category) to toggle 12h/24h time, constellation themes, motion speed, font family, or hidden apps.
+- On rooted TVs, Axis queries `luna://com.webos.applicationManager/listLaunchPoints` at startup, removes uninstalled apps, and stages icons for newly installed apps into `/tmp/axis_icons/`.
+- To bundle custom PNG icons, put them in `assets/icons/`, reference `"assets/icons/<name>.png"` in `assets/config.default.json`, and run `./scripts/package-ipk.sh` again.
+
+---
+
+## 7. Configure Boot and Home Button Takeover (Root Only)
+
+On webOS, pressing the Home button or closing a foreground app activates `com.webos.app.home`. You can redirect this flow to `org.axis.native` without modifying read-only system partitions.
+
+1. Create `/var/lib/webosbrew/init.d/60-axis-launcher` on the TV with a power-state gated foreground watcher:
+   ```sh
+   #!/bin/sh
+   (
+     sleep 4
+     luna-send -n 1 luna://com.webos.applicationManager/launch '{"id":"org.axis.native"}' >/dev/null 2>&1
+     luna-send -i luna://com.webos.applicationManager/getForegroundAppInfo '{"subscribe":true}' 2>/dev/null | \
+     while IFS= read -r line; do
+       case "$line" in
+         *'"appId":"com.webos.app.home"'*)
+           PSTATE=$(luna-send -n 1 luna://com.webos.service.tvpower/power/getPowerState '{}' 2>/dev/null)
+           if echo "$PSTATE" | grep -Eq '"state"[[:space:]]*:[[:space:]]*"Active"' && ! echo "$PSTATE" | grep -q '"processing"'; then
+             luna-send -n 1 luna://com.webos.applicationManager/launch '{"id":"org.axis.native"}' >/dev/null 2>&1
+           fi
+           ;;
+       esac
+     done
+   ) &
+   ```
+   > **Important:** Always check `getPowerState` for `"state":"Active"` before calling `applicationManager/launch`. Without that check, background app exits during `"Screen Saver"` or `"Active Standby"` will wake the display.
+
+2. Make the startup script executable:
+   ```bash
+   ssh root@<TV_IP> "chmod +x /var/lib/webosbrew/init.d/60-axis-launcher"
+   ```
+
+3. *(Optional)* For instant `<35 ms` Home-button return when Axis is already open on an outer category screen, install [`org.webosbrew.inputhook`](https://github.com/webosbrew/inputhook) and bind the Home key (`773`, and `987` on newer remotes) to write `/proc/uptime` to `/tmp/axis_home_seq` (`chmod 644 /tmp/axis_home_seq`) and launch `org.axis.native` when `/tmp/axis_visible` is not `"1"`.
+
+---
+
+## 8. Uninstall and Revert to Stock
+
+1. Remove the startup script (and any `lginputhook` Home keybind if configured):
+   ```bash
+   ssh root@<TV_IP> "rm -f /var/lib/webosbrew/init.d/60-axis-launcher && pkill -f getForegroundAppInfo || true"
+   ```
+2. Uninstall `org.axis.native`:
+   ```bash
+   ssh root@<TV_IP> "luna-send -n 1 luna://com.webos.appInstallService/dev/remove '{\"id\":\"org.axis.native\"}'"
+   ```
+3. Reboot the TV to return to the stock LG Home screen.
