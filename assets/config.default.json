@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "clock24": false,
+  "temp_unit": "fahrenheit",
+  "location_name": "San Francisco",
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "bg_animated": true,
+  "card_animations": true,
+  "bg_theme": "classic",
+  "bg_density": "normal",
+  "bg_speed": "normal",
+  "show_telemetry": false,
+  "categories": {
+    "up": [
+      { "id": "com.webos.app.hdmi1", "title": "HDMI 1", "color": "#e60012", "launch_type": "input" },
+      { "id": "com.webos.app.hdmi2", "title": "HDMI 2", "color": "#2f6cf6", "launch_type": "input" },
+      { "id": "com.twin.app.gamingportal", "title": "Gaming Portal", "color": "#a855f7", "icon": "assets/icons/gamingportal.png" },
+      { "id": "com.geforcenow.play", "title": "GeForce NOW", "color": "#76b900", "icon": "assets/icons/geforcenow.png" }
+    ],
+    "down": [
+      { "id": "netflix", "title": "Netflix", "color": "#e50914", "icon": "assets/icons/netflix.png" },
+      { "id": "amazon", "title": "Prime Video", "color": "#00a8e1", "icon": "assets/icons/prime.png" },
+      { "id": "com.disney.disneyplus-prod", "title": "Disney+", "color": "#1f6feb", "icon": "assets/icons/disney.png" },
+      { "id": "com.apple.appletv", "title": "Apple TV", "color": "#b8bcc4", "icon": "assets/icons/appletv.png" },
+      { "id": "com.wbd.stream", "title": "HBO Max", "color": "#7b2ff7", "icon": "assets/icons/hbomax.png" },
+      { "id": "hulu", "title": "Hulu", "color": "#1ce783", "icon": "assets/icons/hulu.png" },
+      { "id": "youtube.leanback.ytv.v1", "title": "YouTube TV", "color": "#ff4e45", "icon": "assets/icons/youtubetv.png" },
+      { "id": "com.plutotv.app", "title": "Pluto TV", "color": "#ffdd00", "icon": "assets/icons/pluto.png" },
+      { "id": "com.tubitv.ott.tubi", "title": "Tubi", "color": "#8b5cf6", "icon": "assets/icons/tubi.png" }
+    ],
+    "left": [
+      { "id": "youtube.leanback.v4", "title": "YouTube", "color": "#ff0033", "icon": "assets/icons/youtube.png" },
+      { "id": "spotify-beehive", "title": "Spotify", "color": "#1db954", "icon": "assets/icons/spotify.png" },
+      { "id": "twitch.adamffdev.v1", "title": "Twitch", "color": "#9146ff", "icon": "assets/icons/twitch.jpg" },
+      { "id": "com.instantbits.cast.webvideo", "title": "Web Video Caster", "color": "#ff9500", "icon": "assets/icons/webvideo.png" },
+      { "id": "com.webos.app.mediadiscovery", "title": "Media Player", "color": "#0284c7", "icon": "assets/icons/mediaplayer.png" }
+    ],
+    "right": [
+      { "id": "internal.screenoff", "title": "OLED Screen Off", "color": "#38bdf8", "icon": "assets/icons/screenoff.png", "launch_type": "screenoff" },
+      { "id": "internal.settings", "title": "Launcher Settings", "color": "#94a3b8", "icon": "assets/icons/settings.png", "launch_type": "internal" },
+      { "id": "org.webosbrew.hbchannel", "title": "Homebrew", "color": "#34d399", "icon": "assets/icons/homebrew.png" },
+      { "id": "com.palm.app.settings", "title": "TV Settings", "color": "#64748b", "icon": "assets/icons/settings.png" },
+      { "id": "com.webos.app.browser", "title": "Web Browser", "color": "#3b82f6", "icon": "assets/icons/browser.png" },
+      { "id": "com.webos.app.livetv", "title": "Live TV", "color": "#f43f5e", "icon": "assets/icons/livetv.png" },
+      { "id": "com.webos.app.homeconnect", "title": "Home Hub", "color": "#14b8a6", "icon": "assets/icons/homehub.png" }
+    ]
+  },
+  "hidden": []
+}

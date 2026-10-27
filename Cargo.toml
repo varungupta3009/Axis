@@ -1,0 +1,19 @@
+[package]
+name = "axis"
+version = "1.0.0"
+edition = "2021"
+authors = ["Varun Gupta"]
+description = "High-performance native Rust + SDL2 + OpenGL ES 2.0 spatial launcher for LG webOS TVs"
+license = "MIT"
+
+[dependencies]
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
