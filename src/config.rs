@@ -76,7 +76,7 @@ pub struct LauncherConfig {
     pub bg_speed: String,
     #[serde(default = "default_font_family")]
     pub font_family: String,
-    #[serde(default = "default_false")]
+    #[serde(default = "default_true")]
     pub show_telemetry: bool,
     pub categories: Categories,
     #[serde(default)]
@@ -89,20 +89,17 @@ fn default_version() -> u32 {
 fn default_true() -> bool {
     true
 }
-fn default_false() -> bool {
-    false
-}
 fn default_temp_unit() -> String {
-    "fahrenheit".to_string()
+    "celsius".to_string()
 }
 fn default_location() -> String {
-    "San Francisco".to_string()
+    "Bengaluru".to_string()
 }
 fn default_lat() -> f64 {
-    37.7749
+    12.9716
 }
 fn default_lon() -> f64 {
-    -122.4194
+    77.5946
 }
 fn default_theme() -> String {
     "classic".to_string()
@@ -187,7 +184,7 @@ pub fn load_default_config(base_dir: &Path) -> LauncherConfig {
         bg_density: "normal".to_string(),
         bg_speed: "normal".to_string(),
         font_family: default_font_family(),
-        show_telemetry: false,
+        show_telemetry: true,
         categories: Categories {
             up: Vec::new(),
             down: Vec::new(),
@@ -427,6 +424,67 @@ pub fn read_rss_mb() -> f32 {
         }
     }
     10.0
+}
+
+#[derive(Clone, Debug)]
+pub struct SolStatus {
+    pub sol_up: bool,
+    pub jf_docker_up: bool,
+    pub jf_native_up: bool,
+    pub plex_up: bool,
+    pub ping_ms: u32,
+}
+
+impl Default for SolStatus {
+    fn default() -> Self {
+        Self {
+            sol_up: true,
+            jf_docker_up: true,
+            jf_native_up: true,
+            plex_up: true,
+            ping_ms: 2,
+        }
+    }
+}
+
+/// Probes the Sol homelab server (192.168.50.100) for:
+/// 1) Sol Caddy Ingress (:80) + latency
+/// 2) Jellyfin Docker (https://watch.vrg.rocks/health via 192.168.50.100:443)
+/// 3) Jellyfin Native / Metal (http://192.168.50.100:8097/health)
+/// 4) Plex Media Server (http://192.168.50.100:32400/identity)
+pub fn fetch_sol_status() -> Option<SolStatus> {
+    let cmd = r#"
+s=$(curl -s -o /dev/null -w "%{http_code}:%{time_total}" --connect-timeout 1 -m 2 http://192.168.50.100:80 2>/dev/null || echo "000:0")
+jd=$(curl -sk --resolve watch.vrg.rocks:443:192.168.50.100 --connect-timeout 1 -m 2 https://watch.vrg.rocks/health 2>/dev/null || echo "Down")
+jn=$(curl -s --connect-timeout 1 -m 2 http://192.168.50.100:8097/health 2>/dev/null || echo "Down")
+px=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 1 -m 2 http://192.168.50.100:32400/identity 2>/dev/null || echo "000")
+echo "$s|$jd|$jn|$px"
+"#;
+    let out = run_root_sh(cmd)?;
+    let line = out.trim();
+    let parts: Vec<&str> = line.split('|').collect();
+    if parts.len() < 4 {
+        return None;
+    }
+    let mut s_parts = parts[0].split(':');
+    let s_code = s_parts.next().unwrap_or("000");
+    let s_time: f32 = s_parts
+        .next()
+        .and_then(|v| v.parse::<f32>().ok())
+        .unwrap_or(0.002);
+    let sol_up = matches!(s_code, "200" | "301" | "302" | "307" | "308" | "401" | "403");
+    let ping_ms = ((s_time * 1000.0).round() as u32).max(1);
+    let jf_docker_up = parts[1].trim().eq_ignore_ascii_case("Healthy");
+    let jf_native_up = parts[2].trim().eq_ignore_ascii_case("Healthy");
+    let plex_up = matches!(parts[3].trim(), "200" | "401");
+
+    Some(SolStatus {
+        sol_up,
+        jf_docker_up,
+        jf_native_up,
+        plex_up,
+        ping_ms,
+    })
 }
 
 

@@ -4,8 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP_ID="org.axis.native"
-TV_HOST="${TV_HOST:-root@webostv.local}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
+TV_HOST="${TV_HOST:-root@192.168.50.107}"
+SSH_KEY="${SSH_KEY:-../id_ed25519_lgc2}"
 IPK_PATH="dist/${APP_ID}_1.0.0_arm.ipk"
 
 ./scripts/package-ipk.sh

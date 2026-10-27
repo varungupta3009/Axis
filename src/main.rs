@@ -3,9 +3,9 @@ mod ffi;
 mod gl_renderer;
 
 use config::{
-    app_base_dir, discover_extra_apps, fetch_weather, load_config,
+    app_base_dir, discover_extra_apps, fetch_sol_status, fetch_weather, load_config,
     load_default_config, parse_hex_rgb, read_rss_mb, run_root_sh, save_config, AppItem,
-    LauncherConfig, WeatherData,
+    LauncherConfig, SolStatus, WeatherData,
 };
 use ffi::*;
 use gl_renderer::{ConstellationsState, GlRenderer};
@@ -15,6 +15,7 @@ use std::ffi::CString;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -309,6 +310,9 @@ struct AppState {
     last_jitter_ms: u32,
 
     weather: Arc<Mutex<WeatherData>>,
+    sol_status: Arc<Mutex<SolStatus>>,
+    sol_in_flight: Arc<AtomicBool>,
+    last_sol_ms: u32,
     discovered_rx: Arc<Mutex<Option<Vec<AppItem>>>>,
     rss_mb: f32,
     last_rss_ms: u32,
@@ -339,6 +343,8 @@ impl AppState {
         let s_right = target_scroll_for(ScreenId::Right, 0);
 
         let weather = Arc::new(Mutex::new(WeatherData::default()));
+        let sol_status = Arc::new(Mutex::new(SolStatus::default()));
+        let sol_in_flight = Arc::new(AtomicBool::new(false));
         let discovered_rx = Arc::new(Mutex::new(None));
 
         let st = Self {
@@ -375,6 +381,9 @@ impl AppState {
             jitter_y: 0.0,
             last_jitter_ms: now_ms,
             weather,
+            sol_status,
+            sol_in_flight,
+            last_sol_ms: now_ms,
             discovered_rx,
             rss_mb: read_rss_mb(),
             last_rss_ms: now_ms,
@@ -383,8 +392,36 @@ impl AppState {
             fps_timer_ms: now_ms,
         };
         st.spawn_weather_refresh();
+        st.spawn_sol_refresh();
         st.spawn_app_discovery();
         st
+    }
+
+    fn spawn_sol_refresh(&self) {
+        if self
+            .sol_in_flight
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+        let s_arc = Arc::clone(&self.sol_status);
+        let in_flight = Arc::clone(&self.sol_in_flight);
+        thread::spawn(move || {
+            if let Some(st) = fetch_sol_status() {
+                if let Ok(mut lock) = s_arc.lock() {
+                    *lock = st;
+                }
+            }
+            in_flight.store(false, Ordering::SeqCst);
+        });
+    }
+
+    fn maybe_refresh_sol(&mut self, now_ms: u32) {
+        if now_ms.saturating_sub(self.last_sol_ms) >= 300_000 {
+            self.last_sol_ms = now_ms;
+            self.spawn_sol_refresh();
+        }
     }
 
     fn spawn_weather_refresh(&self) {
@@ -549,6 +586,12 @@ impl AppState {
                 self.settings_pane = SettingsPane::Main;
                 self.settings_row = 0;
                 return;
+            }
+            if app.id == "com.beb.plxnative" || app.id == "cdp-30" {
+                let plex_up = self.sol_status.lock().map(|s| s.plex_up).unwrap_or(true);
+                if !plex_up {
+                    self.show_toast("Starting Plex Media Server on Sol...".to_string(), now_ms);
+                }
             }
             self.launch_fx_id = Some(app.id.clone());
             self.launch_fx_ms = now_ms;
@@ -889,7 +932,7 @@ impl AppState {
                 save_config(&self.cfg);
             }
             8 => {
-                // System Telemetry HUD
+                // Sol & Telemetry HUD
                 self.cfg.show_telemetry = !self.cfg.show_telemetry;
                 save_config(&self.cfg);
             }
@@ -1348,51 +1391,34 @@ fn draw_home_panel(
             false,
         );
 
-        // Vector Axis Crosshair Emblem
+        // 4-ring concentric Sol vector logo (1:1 from ~/Documents/Sol/sol.svg)
         let lcx = sx + 38.0;
         let lcy = sy + 34.0;
-        let col = [0.486, 0.659, 1.0, 0.96 * ui_alpha]; // #7ca8ff
-
-        // Center dot
-        r.draw_rounded_rect(
-            lcx - 3.5,
-            lcy - 3.5,
-            7.0,
-            7.0,
-            3.5,
-            col,
-            col,
-            0.0,
-            [0.0; 4],
-            0.0,
-            [0.0; 4],
-            false,
-        );
-
-        // Crosshair ticks
-        r.push_line(lcx - 14.0, lcy, lcx - 6.0, lcy, col);
-        r.push_line(lcx + 6.0, lcy, lcx + 14.0, lcy, col);
-        r.push_line(lcx, lcy - 14.0, lcx, lcy - 6.0, col);
-        r.push_line(lcx, lcy + 6.0, lcx, lcy + 14.0, col);
-
-        // Outer ring
-        r.draw_rounded_rect(
-            lcx - 14.0,
-            lcy - 14.0,
-            28.0,
-            28.0,
-            14.0,
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            1.5,
-            [0.486, 0.659, 1.0, 0.45 * ui_alpha],
-            0.0,
-            [0.0; 4],
-            false,
-        );
+        for (rad, rgb) in [
+            (16.0_f32, [1.000, 0.843, 0.000]), // r=48 gold (#ffd700)
+            (12.6_f32, [1.000, 0.549, 0.000]), // r=38 darkorange (#ff8c00)
+            (9.3_f32, [0.000, 0.600, 1.000]),  // r=28 azure (#0099ff)
+            (6.0_f32, [0.000, 0.333, 1.000]),  // r=18 cobalt (#0055ff)
+        ] {
+            let col = [rgb[0], rgb[1], rgb[2], 0.96 * ui_alpha];
+            r.draw_rounded_rect(
+                lcx - rad,
+                lcy - rad,
+                rad * 2.0,
+                rad * 2.0,
+                rad,
+                col,
+                col,
+                0.0,
+                [0.0; 4],
+                0.0,
+                [0.0; 4],
+                false,
+            );
+        }
 
         r.draw_text(
-            "Axis Telemetry",
+            "VRG's Sol Homelab",
             sx + 64.0,
             sy + 24.0,
             18,
@@ -1402,7 +1428,7 @@ fn draw_home_panel(
             0.5,
         );
         r.draw_text(
-            "webOS Native • OpenGL ES 2.0",
+            "192.168.50.100 • vrg.rocks",
             sx + 64.0,
             sy + 44.0,
             13,
@@ -1412,15 +1438,29 @@ fn draw_home_panel(
             0.5,
         );
 
-        let status_txt = "ACTIVE";
-        let status_col = [0.494, 0.906, 0.651, 0.95 * ui_alpha];
+        let sol = st
+            .sol_status
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_default();
+
+        let ping_txt = if sol.sol_up {
+            format!("{} ms", sol.ping_ms)
+        } else {
+            "DOWN".to_string()
+        };
+        let ping_col = if sol.sol_up {
+            [0.494, 0.906, 0.651, 0.95 * ui_alpha]
+        } else {
+            [0.953, 0.545, 0.659, 0.95 * ui_alpha]
+        };
         r.draw_text(
-            status_txt,
+            &ping_txt,
             sx + sw - 24.0,
             sy + 34.0,
             14,
             true,
-            status_col,
+            ping_col,
             1.0,
             0.5,
         );
@@ -1435,23 +1475,26 @@ fn draw_home_panel(
         );
         r.flush_primitives(1.0);
 
-        // 2x2 Telemetry Grid: Memory (RSS), Display Mode, Graphics API, Refresh Sync
-        let res_str = "1920×1080";
-        let rss_str = format!("{:.1} MB", st.rss_mb);
-        let fps_str = format!("{} FPS", st.fps_display);
-        let items: [(&str, &str); 4] = [
-            ("Memory (RSS)", &rss_str),
-            ("Display Mode", res_str),
-            ("Graphics API", "OpenGL ES 2.0"),
-            ("Refresh Sync", &fps_str),
+        // 2x2 Service Status Grid: Sol Ingress, Jellyfin Docker, Jellyfin Metal, Plex Server
+        let services: [(&str, bool, &str, &str); 4] = [
+            ("Sol Ingress", sol.sol_up, "ONLINE", "OFFLINE"),
+            ("Jellyfin (Docker)", sol.jf_docker_up, "UP", "DOWN"),
+            ("Jellyfin (Native)", sol.jf_native_up, "UP", "DOWN"),
+            ("Plex Server", sol.plex_up, "UP", "STANDBY"),
         ];
-        for (idx, (label, val)) in items.iter().enumerate() {
+        for (idx, (name, is_up, ok_lbl, down_lbl)) in services.iter().enumerate() {
             let col_idx = idx % 2;
             let row_idx = idx / 2;
             let cell_x = sx + 22.0 + (col_idx as f32) * 152.0;
             let cell_y = sy + 84.0 + (row_idx as f32) * 38.0;
 
-            let dot_col = [0.486, 0.659, 1.0, 0.85 * ui_alpha];
+            let dot_col = if *is_up {
+                [0.494, 0.906, 0.651, 0.96 * ui_alpha] // Catppuccin Green (#7ee7a6)
+            } else if idx == 3 {
+                [0.980, 0.702, 0.529, 0.92 * ui_alpha] // Catppuccin Peach (#fab387) for Plex Standby
+            } else {
+                [0.953, 0.545, 0.659, 0.95 * ui_alpha] // Catppuccin Red (#f38ba8)
+            };
             r.draw_rounded_rect(
                 cell_x,
                 cell_y - 4.0,
@@ -1463,11 +1506,11 @@ fn draw_home_panel(
                 0.0,
                 [0.0; 4],
                 6.0,
-                [dot_col[0], dot_col[1], dot_col[2], 0.35 * ui_alpha],
+                [dot_col[0], dot_col[1], dot_col[2], 0.40 * ui_alpha],
                 false,
             );
             r.draw_text(
-                label,
+                name,
                 cell_x + 14.0,
                 cell_y - 7.0,
                 14,
@@ -1477,12 +1520,12 @@ fn draw_home_panel(
                 0.5,
             );
             r.draw_text(
-                val,
+                if *is_up { ok_lbl } else { down_lbl },
                 cell_x + 14.0,
                 cell_y + 10.0,
                 12,
                 false,
-                [0.78, 0.84, 0.96, 0.85 * ui_alpha],
+                dot_col,
                 0.0,
                 0.5,
             );
@@ -1499,9 +1542,9 @@ fn draw_home_panel(
         r.flush_primitives(1.0);
 
         let mode_str = if st.cfg.bg_animated || st.cfg.card_animations {
-            format!("AXIS ENGINE · {:.1} MB RSS · {} FPS", st.rss_mb, st.fps_display)
+            format!("NATIVE GLES2 · {:.1} MB RSS · {} FPS", st.rss_mb, st.fps_display)
         } else {
-            format!("AXIS ENGINE · {:.1} MB RSS · IDLE 0% GPU", st.rss_mb)
+            format!("NATIVE GLES2 · {:.1} MB RSS · IDLE 0% GPU", st.rss_mb)
         };
         r.draw_text(
             &mode_str,
@@ -2236,7 +2279,7 @@ fn draw_settings_modal(r: &mut GlRenderer, st: &AppState, now_ms: u32) {
                 true,
             ),
             (
-                "System Telemetry HUD",
+                "Sol & Telemetry HUD",
                 if st.cfg.show_telemetry {
                     "Shown"
                 } else {
@@ -2446,6 +2489,7 @@ fn main() {
                     if !seq.is_empty() && seq != last_home_seq {
                         last_home_seq = seq;
                         state.reset_to_home(loop_start_ms);
+                        state.maybe_refresh_sol(loop_start_ms);
                         force_redraw = true;
                     }
                 }
@@ -2515,6 +2559,7 @@ fn main() {
                                     && ev_now.saturating_sub(state.blackout_entered_ms) >= 2500
                                 {
                                     state.reset_to_home(ev_now);
+                                    state.maybe_refresh_sol(ev_now);
                                 }
                                 if !state.ambient {
                                     force_redraw = true;
@@ -2529,6 +2574,7 @@ fn main() {
                                     && ev_now.saturating_sub(state.blackout_entered_ms) >= 2500
                                 {
                                     state.reset_to_home(ev_now);
+                                    state.maybe_refresh_sol(ev_now);
                                 }
                                 if !state.ambient {
                                     force_redraw = true;
@@ -2659,6 +2705,16 @@ fn main() {
             if !state.ambient && now_ms.saturating_sub(state.last_rss_ms) >= 2000 {
                 state.last_rss_ms = now_ms;
                 state.rss_mb = read_rss_mb();
+            }
+
+            // Refresh Sol homelab service status every 5 minutes (300s) when actively on Home (never during Blackout/idle)
+            if state.screen == ScreenId::Home
+                && !state.ambient
+                && state.cfg.show_telemetry
+                && now_ms.saturating_sub(state.last_sol_ms) >= 300_000
+            {
+                state.last_sol_ms = now_ms;
+                state.spawn_sol_refresh();
             }
 
             let should_draw =
